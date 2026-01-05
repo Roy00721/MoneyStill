@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圓形 -->
+  <circle cx="256" cy="256" r="240" fill="#4a90e2" stroke="#ffffff" stroke-width="32"/>
+
+  <!-- 錢幣符號 -->
+  <text x="256" y="280" font-family="Arial, sans-serif" font-size="200" font-weight="bold" text-anchor="middle" fill="white">$</text>
+
+  <!-- 裝飾性圓點 -->
+  <circle cx="150" cy="150" r="20" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="362" cy="150" r="20" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="150" cy="362" r="20" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="362" cy="362" r="20" fill="rgba(255,255,255,0.3)"/>
+</svg>

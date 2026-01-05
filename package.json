@@ -1,0 +1,13 @@
+{
+  "name": "money-still",
+  "version": "1.0.0",
+  "description": "簡單的記帳PWA應用",
+  "main": "app.js",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": ["pwa", "accounting", "firebase", "google-auth"],
+  "author": "",
+  "license": "MIT"
+}

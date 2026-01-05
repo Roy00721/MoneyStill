@@ -1,0 +1,17 @@
+{
+    "name": "錢還在 - 記帳APP",
+    "short_name": "錢還在",
+    "description": "簡單又好用的記帳應用",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#4a90e2",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
