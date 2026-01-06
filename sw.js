@@ -4,11 +4,11 @@ const CACHE_NAME = 'money-still-v1';
 const urlsToCache = [
     '/',
     '/index.html',
-    '/styles.css',
-    '/app.js',
+    '/../../css/styles.css',
+    '/../../src/app/app.js',
+    '/../../src/app/firebase-config.js',
     '/manifest.json',
-    '/icon-192.png',
-    '/icon-512.png'
+    '/../../res/icon.svg'
 ];
 
 // Install event

@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#ffffff">
-    <title>錢還在 - 記帳APP</title>
-    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <title>錢還在</title>
+    <link rel="icon" href="../../res/icon.svg" type="image/svg+xml">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../../css/styles.css">
     <!-- Firebase SDK -->
-    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="../../src/app/firebase-config.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, doc, addDoc, getDocs, deleteDoc, query, where, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { firebaseConfig, validateFirebaseConfig, checkFirebaseSetup, diagnoseFirebaseSetup } from './firebase-config.js';
+        import { firebaseConfig, validateFirebaseConfig, checkFirebaseSetup, diagnoseFirebaseSetup } from '../../src/app/firebase-config.js';
 
         // 驗證 Firebase 配置
         if (!validateFirebaseConfig()) {
@@ -132,7 +132,7 @@
     <!-- 載入應用模組 -->
     <script type="module">
         // 動態載入應用
-        import('./app.js').then(() => {
+        import('../../src/app/app.js').then(() => {
             console.log('應用模組已載入');
             // 等待 Firebase 初始化完成
             const checkFirebaseReady = () => {

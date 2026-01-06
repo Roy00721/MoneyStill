@@ -3,11 +3,33 @@ alwaysApply: true
 ---
 
 # 目標
-## 這是一個記帳APP
-## 完成一個PWA
-## 使用google作為帳戶登入
-## 資料庫用Firebase
+- 這是一個記帳APP
+- 完成一個PWA
+- 使用google作為帳戶登入
+- 資料庫用Firebase
 
 # 風格
-## 簡約風
-## 色彩濃度低的漫畫感
+- 簡約風
+- 色彩濃度低的漫畫感
+
+# 架構
+- src 程式
+-- app 啟動、全域設置
+-- modules 各種功能
+-- utils 小工具
+- repository 資料存取
+-- api.js 接口特別獨立出來
+- res 圖片、音效等資源
+- css
+
+# 寫作規範
+- 結尾LF
+
+## js
+- 變數命名不簡寫、小駝峰
+- 常數命名全大寫
+- function命名大駝峰
+- 善用Enum概念
+
+# 其他
+- port號是5500
