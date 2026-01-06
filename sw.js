@@ -8,7 +8,6 @@ const urlsToCache = [
     '/css/styles.css',
     '/src/app/app.js',
     '/src/app/firebase-config.js',
-    '/manifest.json',
     '/res/icon.svg'
 ];
 

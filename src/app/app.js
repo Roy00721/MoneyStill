@@ -58,11 +58,9 @@ class MoneyStillApp {
                         if (newWorker) {
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // 有新版本可用
-                                    console.log('新版本 Service Worker 已安裝');
-                                    if (confirm('應用程式已更新，要重新載入嗎？')) {
-                                        window.location.reload();
-                                    }
+                                    // 有新版本可用 - 暴力法：直接重新載入
+                                    console.log('新版本 Service Worker 已安裝，正在重新載入...');
+                                    setTimeout(() => window.location.reload(), 1000); // 延遲1秒
                                 }
                             });
                         }
