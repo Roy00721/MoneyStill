@@ -7,6 +7,7 @@ alwaysApply: true
 - 完成一個PWA
 - 使用google作為帳戶登入
 - 資料庫用Firebase
+- 先求功能再求效能(資料的讀取可以之後優化)
 
 # 風格
 - 簡約風
@@ -18,9 +19,11 @@ alwaysApply: true
 -- modules 各種功能
 -- utils 小工具
 - repository 資料存取
--- api.js 接口特別獨立出來
+- firebase firebase的功能全部寫在這
 - res 圖片、音效等資源
-- css
+- css 外觀設定
+- test 這個功能不太重要，測試時可以先用這裡面的檔案
+- backup 重構前先將檔案備份至此
 
 # 寫作規範
 - 結尾LF
@@ -29,7 +32,9 @@ alwaysApply: true
 - 變數命名不簡寫、小駝峰
 - 常數命名全大寫
 - function命名大駝峰
+- function一律使用箭頭函式
 - 善用Enum概念
 
 # 其他
 - port號是5500
+- README不用寫，只需要寫上線前要記得改的東西或注意事項

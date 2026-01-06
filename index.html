@@ -5,83 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#ffffff">
     <title>錢還在</title>
-    <link rel="icon" href="../../res/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="res/icon.svg" type="image/svg+xml">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="../../css/styles.css">
-    <!-- Firebase SDK -->
-    <script type="module" src="../../src/app/firebase-config.js"></script>
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, doc, addDoc, getDocs, deleteDoc, query, where, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { firebaseConfig, validateFirebaseConfig, checkFirebaseSetup, diagnoseFirebaseSetup } from '../../src/app/firebase-config.js';
-
-        // 驗證 Firebase 配置
-        if (!validateFirebaseConfig()) {
-            console.error('Firebase 配置無效，請檢查 firebase-config.js');
-            checkFirebaseSetup();
-        } else {
-            console.log('Firebase 配置驗證通過');
-        }
-
-        try {
-            // Initialize Firebase
-            console.log('正在初始化 Firebase...');
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const provider = new GoogleAuthProvider();
-            const db = getFirestore(app);
-
-            // 先設置認證持久化，再設置全域變數
-            import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js').then(({ setPersistence, browserLocalPersistence }) => {
-                return setPersistence(auth, browserLocalPersistence);
-            }).then(() => {
-                console.log('Firebase Auth 持久化已設置');
-
-                // 設置全域變數
-                window.firebaseAuth = { auth, provider, signInWithPopup, signOut };
-                window.firestoreDB = {
-                    db,
-                    collection,
-                    doc,
-                    addDoc,
-                    getDocs,
-                    deleteDoc,
-                    query,
-                    where,
-                    orderBy,
-                    onSnapshot
-                };
-                console.log('Firebase 初始化完成', window.firebaseAuth);
-
-                // 運行診斷檢查
-                diagnoseFirebaseSetup();
-
-            }).catch(error => {
-                console.error('設置 Auth 持久化失敗:', error);
-                // 即使持久化失敗，也要設置基本功能
-                window.firebaseAuth = { auth, provider, signInWithPopup, signOut };
-                window.firestoreDB = {
-                    db,
-                    collection,
-                    doc,
-                    addDoc,
-                    getDocs,
-                    deleteDoc,
-                    query,
-                    where,
-                    orderBy,
-                    onSnapshot
-                };
-
-                // 即使持久化失敗也運行診斷
-                diagnoseFirebaseSetup();
-            });
-
-        } catch (error) {
-            console.error('Firebase 初始化失敗:', error);
-        }
-    </script>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="app">
@@ -130,29 +56,6 @@
     </div>
 
     <!-- 載入應用模組 -->
-    <script type="module">
-        // 動態載入應用
-        import('../../src/app/app.js').then(() => {
-            console.log('應用模組已載入');
-            // 等待 Firebase 初始化完成
-            const checkFirebaseReady = () => {
-                if (window.firebaseAuth && window.MoneyStillApp) {
-                    // Firebase 和應用類別都已準備好，創建實例
-                    window.app = new window.MoneyStillApp();
-                    console.log('MoneyStill 應用已初始化');
-                } else {
-                    console.log('等待 Firebase 初始化...', {
-                        firebaseAuth: !!window.firebaseAuth,
-                        MoneyStillApp: !!window.MoneyStillApp
-                    });
-                    // 稍後再檢查
-                    setTimeout(checkFirebaseReady, 100);
-                }
-            };
-            checkFirebaseReady();
-        }).catch(error => {
-            console.error('應用模組載入失敗:', error);
-        });
-    </script>
+    <script type="module" src="src/app/app.js"></script>
 </body>
 </html>

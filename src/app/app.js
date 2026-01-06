@@ -1,23 +1,25 @@
 // MoneyStill - 記帳APP 應用邏輯
+import authManager from '../modules/auth.js';
+import * as repos from '../../repository/index.js';
 
 class MoneyStillApp {
     constructor() {
         this.entries = [];
         this.currentUser = null;
+        this.unsubscribeEntries = null;
         this.init();
     }
 
-    init() {
+    init = () => {
         console.log('開始初始化 MoneyStillApp...');
-        this.entries = []; // 初始化記帳項目陣列
+        this.entries = [];
         this.bindEvents();
         this.registerServiceWorker();
-        this.checkAuthState();
-        this.setupFirestore();
+        this.setupAuth();
         console.log('MoneyStillApp 初始化完成');
     }
 
-    bindEvents() {
+    bindEvents = () => {
         console.log('綁定事件...');
         // 登入按鈕
         const loginBtn = document.getElementById('login-btn');
@@ -44,11 +46,27 @@ class MoneyStillApp {
         }
     }
 
-    registerServiceWorker() {
+    registerServiceWorker = () => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then(registration => {
                     console.log('Service Worker registered:', registration);
+
+                    // 檢查是否有新版本
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // 有新版本可用
+                                    console.log('新版本 Service Worker 已安裝');
+                                    if (confirm('應用程式已更新，要重新載入嗎？')) {
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        }
+                    });
                 })
                 .catch(error => {
                     console.log('Service Worker registration failed:', error);
@@ -56,191 +74,125 @@ class MoneyStillApp {
         }
     }
 
-    async signIn() {
-        console.log('嘗試登入...');
-        console.log('Firebase Auth 狀態:', window.firebaseAuth);
-
-        if (!window.firebaseAuth) {
-            console.error('Firebase 尚未初始化');
-            alert('Firebase 尚未初始化，請稍後再試');
-            return;
-        }
-
-        if (!window.firebaseAuth.auth) {
-            console.error('Firebase Auth 對象不存在');
-            alert('Firebase Auth 配置錯誤');
-            return;
-        }
-
-        try {
-            console.log('正在開啟Google登入彈窗...');
-            const result = await window.firebaseAuth.signInWithPopup(
-                window.firebaseAuth.auth,
-                window.firebaseAuth.provider
-            );
-
-            this.currentUser = result.user;
+    setupAuth = () => {
+        // 監聽認證狀態變更
+        authManager.OnAuthStateChange((user) => {
+            this.currentUser = user;
             this.updateUI();
-            console.log('登入成功:', this.currentUser.displayName);
-        } catch (error) {
-            console.error('登入失敗:', error);
-            console.error('錯誤代碼:', error.code);
-            console.error('錯誤訊息:', error.message);
-
-            // 根據錯誤類型顯示不同訊息
-            if (error.code === 'auth/popup-blocked') {
-                alert('彈窗被瀏覽器阻止，請允許彈窗後重試');
-            } else if (error.code === 'auth/popup-closed-by-user') {
-                alert('登入取消');
-            } else if (error.code === 'auth/invalid-api-key') {
-                alert('Firebase API 金鑰無效，請檢查配置');
+            
+            if (user) {
+                // 用戶登入時載入資料並設置即時監聽
+                this.loadEntries();
+                this.setupEntriesListener();
             } else {
-                alert('登入失敗: ' + error.message);
+                // 用戶登出時清空資料
+                this.entries = [];
+                this.renderEntries();
+                this.updateBalance();
+                // 取消監聽
+                if (this.unsubscribeEntries) {
+                    this.unsubscribeEntries();
+                    this.unsubscribeEntries = null;
+                }
             }
+        });
+    }
+
+    setupEntriesListener = () => {
+        if (!this.currentUser) {
+            return;
+        }
+
+        // 取消舊的監聽
+        if (this.unsubscribeEntries) {
+            this.unsubscribeEntries();
+        }
+
+        // 設置新的即時監聽
+        try {
+            this.unsubscribeEntries = repos.OnEntriesChanged(this.currentUser.uid, (entries) => {
+                // 轉換資料格式
+                this.entries = entries.map(entry => ({
+                    id: entry.id,
+                    firestoreId: entry.id,
+                    type: entry.type,
+                    amount: entry.amount,
+                    description: entry.description,
+                    date: entry.date ? new Date(entry.date) : new Date(entry.createdAt)
+                }));
+                
+                this.renderEntries();
+                this.updateBalance();
+                console.log(`已同步 ${this.entries.length} 個記帳項目`);
+            });
+        } catch (error) {
+            console.error('設置記帳項目監聽失敗:', error);
         }
     }
 
-    async signOut() {
-        if (!window.firebaseAuth) {
-            alert('Firebase 尚未初始化');
-            return;
-        }
-
+    signIn = async () => {
+        console.log('嘗試登入...');
+        
         try {
-            await window.firebaseAuth.signOut(window.firebaseAuth.auth);
-            this.currentUser = null;
-            this.updateUI();
-            console.log('已登出');
+            await authManager.SignIn();
+            // 認證狀態變更會透過 setupAuth 中的監聽器處理
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    signOut = async () => {
+        try {
+            await authManager.SignOut();
+            // 認證狀態變更會透過 setupAuth 中的監聽器處理
         } catch (error) {
             console.error('登出失敗:', error);
+            alert('登出失敗，請稍後再試');
         }
-    }
-
-    checkAuthState() {
-        // 使用一次性檢查，避免無限循環
-        const checkOnce = () => {
-            if (window.firebaseAuth && window.firebaseAuth.auth && window.firestoreDB) {
-                console.log('Firebase 已準備好，設置認證監聽器');
-                window.firebaseAuth.auth.onAuthStateChanged(user => {
-                    console.log('認證狀態變更:', user ? `已登入 (${user.displayName})` : '未登入');
-                    this.currentUser = user;
-                    this.updateUI();
-                    // 用戶登入時載入資料
-                    if (user) {
-                        this.loadEntries();
-                    } else {
-                        // 用戶登出時清空資料
-                        this.entries = [];
-                        this.renderEntries();
-                        this.updateBalance();
-                    }
-                });
-            } else {
-                // Firebase 還沒準備好，顯示登入頁面
-                console.log('Firebase 尚未準備好，顯示登入頁面');
-                this.updateUI();
-            }
-        };
-
-        // 檢查 Firebase 是否已準備好，如果沒有則等待
-        if (window.firebaseAuth && window.firebaseAuth.auth && window.firestoreDB) {
-            checkOnce();
-        } else {
-            // 等待 Firebase 初始化，最大等待 3 秒
-            let attempts = 0;
-            const waitForFirebase = () => {
-                attempts++;
-                if (window.firebaseAuth && window.firebaseAuth.auth && window.firestoreDB) {
-                    checkOnce();
-                } else if (attempts < 10) { // 最多等待 10 次 (1 秒)
-                    setTimeout(waitForFirebase, 1000);
-                } else {
-                    console.log('Firebase 初始化超時，顯示登入頁面');
-                    this.updateUI();
-                }
-            };
-            waitForFirebase();
-        }
-    }
-
-    setupFirestore() {
-        // 設置 Firestore 即時監聽器（在用戶登入後設置）
     }
 
     async saveEntry(entry) {
-        // 確保 Firestore 已初始化
-        if (!window.firestoreDB) {
-            console.warn('Firestore 未初始化，無法儲存');
-            return null;
-        }
-
         if (!this.currentUser) {
             console.warn('用戶未登入，無法儲存');
             return null;
         }
 
         try {
-            const { db, collection, addDoc } = window.firestoreDB;
-            const entriesRef = collection(db, 'users', this.currentUser.uid, 'entries');
-
-            // 準備儲存到 Firestore 的資料
             const entryData = {
                 type: entry.type,
                 amount: entry.amount,
                 description: entry.description,
-                date: entry.date.toISOString(), // 轉換為 ISO 字串
-                createdAt: new Date()
+                date: entry.date.toISOString()
             };
 
-            const docRef = await addDoc(entriesRef, entryData);
-            console.log('記帳項目已儲存到 Firestore, ID:', docRef.id);
-
-            // 更新本地項目的 Firestore ID
-            entry.firestoreId = docRef.id;
-            return docRef.id;
+            const entryId = await repos.Save(this.currentUser.uid, entry.firestoreId || null, entryData);
+            console.log('記帳項目已儲存, ID:', entryId);
+            return entryId;
         } catch (error) {
             console.error('儲存記帳項目失敗:', error);
-            // 不顯示alert，改為靜默處理，讓用戶能繼續使用
             console.warn('儲存失敗，但資料已保存在本地');
             return null;
         }
     }
 
-    async deleteEntryFromFirestore(entryId) {
-        // 確保 Firestore 已初始化
-        if (!window.firestoreDB) {
-            console.warn('Firestore 未初始化，無法刪除');
-            return false;
-        }
-
+    async deleteEntryFromRepository(entryId) {
         if (!this.currentUser) {
             console.warn('用戶未登入，無法刪除');
             return false;
         }
 
         try {
-            const { db, doc, deleteDoc } = window.firestoreDB;
-            const entryRef = doc(db, 'users', this.currentUser.uid, 'entries', entryId);
-
-            await deleteDoc(entryRef);
-            console.log('記帳項目已從 Firestore 刪除, ID:', entryId);
+            await repos.Delete(this.currentUser.uid, entryId);
+            console.log('記帳項目已刪除, ID:', entryId);
             return true;
         } catch (error) {
             console.error('刪除記帳項目失敗:', error);
-            // 不顯示alert，改為靜默處理
             console.warn('雲端刪除失敗，但本地已刪除');
             return false;
         }
     }
 
     async loadEntries() {
-        // 確保 Firestore 已初始化
-        if (!window.firestoreDB) {
-            console.warn('Firestore 未初始化，稍後重試');
-            setTimeout(() => this.loadEntries(), 200);
-            return;
-        }
-
         if (!this.currentUser) {
             console.warn('用戶未登入');
             return;
@@ -248,36 +200,28 @@ class MoneyStillApp {
 
         try {
             console.log('開始載入記帳資料...');
-            const { db, collection, getDocs, query, orderBy } = window.firestoreDB;
-            const entriesRef = collection(db, 'users', this.currentUser.uid, 'entries');
-            const q = query(entriesRef, orderBy('createdAt', 'desc'));
-            const querySnapshot = await getDocs(q);
-
-            this.entries = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                const entry = {
-                    id: Date.now() + Math.random(), // 本地使用的唯一ID
-                    firestoreId: doc.id, // Firestore 文檔ID
-                    type: data.type,
-                    amount: data.amount,
-                    description: data.description,
-                    date: new Date(data.date)
-                };
-                this.entries.push(entry);
-            });
+            const entries = await repos.GetAllEntries(this.currentUser.uid);
+            
+            // 轉換資料格式
+            this.entries = entries.map(entry => ({
+                id: entry.id,
+                firestoreId: entry.id,
+                type: entry.type,
+                amount: entry.amount,
+                description: entry.description,
+                date: entry.date ? new Date(entry.date) : new Date(entry.createdAt)
+            }));
 
             this.renderEntries();
             this.updateBalance();
             console.log(`已載入 ${this.entries.length} 個記帳項目`);
         } catch (error) {
             console.error('載入記帳項目失敗:', error);
-            // 不要顯示alert，因為這可能是正常的（比如初次使用）
             console.log('可能是初次使用用戶，沒有記帳資料');
         }
     }
 
-    updateUI() {
+    updateUI = () => {
         const authSection = document.getElementById('auth-section');
         const accountingSection = document.getElementById('accounting-section');
         const userInfo = document.getElementById('user-info');
@@ -302,7 +246,7 @@ class MoneyStillApp {
         }
     }
 
-    async addEntry() {
+    addEntry = async () => {
         const type = document.getElementById('entry-type').value;
         const amount = parseFloat(document.getElementById('entry-amount').value);
         const description = document.getElementById('entry-description').value.trim();
@@ -327,50 +271,51 @@ class MoneyStillApp {
             date: new Date()
         };
 
-        // 儲存到 Firestore
+        // 儲存到 Repository
         const firestoreId = await this.saveEntry(entry);
         if (firestoreId) {
             entry.firestoreId = firestoreId;
-            // 新增到本地列表
-            this.entries.unshift(entry); // 插入到開頭，因為我們按創建時間降序排列
-            this.renderEntries();
-            this.updateBalance();
+            // 即時監聽器會自動更新列表，但為了更好的 UX，我們也立即更新本地
+            // 如果即時監聽器正常工作，這行會被覆蓋
+            const existingIndex = this.entries.findIndex(e => e.firestoreId === firestoreId);
+            if (existingIndex === -1) {
+                this.entries.unshift(entry);
+                this.renderEntries();
+                this.updateBalance();
+            }
 
             // 清空表單
             document.getElementById('entry-amount').value = '';
             document.getElementById('entry-description').value = '';
 
-            // 顯示console.log
             console.log('新增記帳項目:', entry);
+        } else {
+            alert('儲存失敗，請稍後再試');
         }
     }
 
-    async deleteEntry(id) {
-        const index = this.entries.findIndex(entry => entry.id === id);
+    deleteEntry = async (id) => {
+        const index = this.entries.findIndex(entry => entry.id === id || entry.firestoreId === id);
         if (index > -1) {
             const deletedEntry = this.entries[index];
+            const entryId = deletedEntry.firestoreId || deletedEntry.id;
 
-            // 從 Firestore 刪除
-            if (deletedEntry.firestoreId) {
-                const success = await this.deleteEntryFromFirestore(deletedEntry.firestoreId);
-                if (success) {
-                    // 從本地列表刪除
-                    this.entries.splice(index, 1);
-                    this.renderEntries();
-                    this.updateBalance();
-                    console.log('刪除記帳項目:', deletedEntry);
-                }
+            // 從 Repository 刪除
+            const success = await this.deleteEntryFromRepository(entryId);
+            if (success) {
+                // 即時監聽器會自動更新列表
+                console.log('刪除記帳項目:', deletedEntry);
             } else {
-                // 如果沒有 firestoreId（舊資料），直接從本地刪除
+                // 如果刪除失敗，從本地移除（保持 UI 一致性）
                 this.entries.splice(index, 1);
                 this.renderEntries();
                 this.updateBalance();
-                console.log('刪除本地記帳項目:', deletedEntry);
+                alert('刪除失敗，但已從本地移除');
             }
         }
     }
 
-    renderEntries() {
+    renderEntries = () => {
         const container = document.getElementById('entries-container');
         container.innerHTML = '';
 
@@ -385,9 +330,11 @@ class MoneyStillApp {
         });
     }
 
-    createEntryElement(entry) {
+    createEntryElement = (entry) => {
         const div = document.createElement('div');
         div.className = `entry-item ${entry.type}`;
+
+        const entryId = entry.firestoreId || entry.id;
 
         div.innerHTML = `
             <div class="entry-content">
@@ -400,7 +347,7 @@ class MoneyStillApp {
                 </div>
             </div>
             <div class="entry-actions">
-                <button class="btn btn-danger btn-small" onclick="app.deleteEntry(${entry.id})">
+                <button class="btn btn-danger btn-small" onclick="app.deleteEntry('${entryId}')">
                     刪除
                 </button>
             </div>
@@ -409,7 +356,7 @@ class MoneyStillApp {
         return div;
     }
 
-    updateBalance() {
+    updateBalance = () => {
         const total = this.entries.reduce((sum, entry) => {
             return sum + (entry.type === 'income' ? entry.amount : -entry.amount);
         }, 0);
@@ -420,5 +367,10 @@ class MoneyStillApp {
     }
 }
 
-// 導出類別，讓 index.html 在 Firebase 準備好後創建實例
-window.MoneyStillApp = MoneyStillApp;
+// 創建應用實例
+const app = new MoneyStillApp();
+
+// 將實例掛載到 window，方便 HTML 中的 onclick 使用
+window.app = app;
+
+export default MoneyStillApp;
